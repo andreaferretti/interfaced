@@ -1,5 +1,7 @@
 import interfaced
 
+import test_exports
+
 type
   Human = object
     name: string
@@ -23,7 +25,7 @@ createInterface(Animal):
   proc makeNoise(this: Animal): string
   proc legs(this: Animal): int
   proc greet(this: Animal, other: string): string
-
+    
 proc interact(animal: Animal) =
   echo animal.makeNoise
   echo animal.greet("James Bond")
@@ -37,7 +39,12 @@ when isMainModule:
     me = Human(name: "Andrea")
     bau = Dog()
 
-  for animal in @[me.toAnimal, bau.toAnimal]:
-    echo "Number of legs: ", legs(animal)
+    charmander = Charmander()
+    espeon = Espeon()
 
-  interactAll(me, bau)
+  for animal in @[me.toAnimal, bau.toAnimal, charmander.toAnimal, espeon.toAnimal]:
+    echo "Number of legs: ", legs(animal)
+  for pokemon in @[charmander.toPokemon, espeon.toPokemon]:
+    echo pokemon.name(), " is a ", pokemon.typ(), " Pokemon"
+
+  interactAll(me, bau, charmander, espeon)

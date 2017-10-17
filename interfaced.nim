@@ -1,6 +1,9 @@
 import macros
 
-macro implementInterface(interfaceName: typed) : untyped =
+proc exportIdent(ident: NimNode, exports: bool): NimNode {.compileTime.} =
+  if exports: nnkPostfix.newTree(newIdentNode("*"), ident) else: ident
+
+macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped =
   let
     interfaceNameStr = $interfaceName.symbol
     vtableSymbol = interfaceName.symbol.getImpl[2][2][1][1][0]
@@ -8,20 +11,26 @@ macro implementInterface(interfaceName: typed) : untyped =
 
   let
     objectConstructor = nnkObjConstr.newTree(vtableSymbol)
-
+  
+  echo "Vtable", vtableRecordList.repr
   for identDefs in vtableRecordList:
     let
       methodName = identDefs[0]
       params = identDefs[1][0]
-      lambdaBody = quote do:
-        cast[var T](this).`methodName`()
+      lambdaBody = nnkPar.newTree quote do:
+        `methodName`(cast[var T](this))
+      
+    echo lambdaBody.treeRepr
 
     for i in 2 ..< len(params):
       let param = params[i]
       param.expectKind(nnkIdentDefs)
       for j in 0 .. len(param) - 3:
-        lambdaBody.add param[j]
+        lambdaBody[0].add param[j]
     
+    if lambdaBody[0].len == 1:
+      lambdaBody[0] = lambdaBody[0][0]
+
     methodName.expectKind nnkIdent
 
     objectConstructor.add nnkExprColonExpr.newTree(
@@ -30,7 +39,10 @@ macro implementInterface(interfaceName: typed) : untyped =
         newEmptyNode(),newEmptyNode(),newEmptyNode(),
         params.copy,
         newEmptyNode(),newEmptyNode(),
-        lambdaBody
+        newStmtList(
+          nnkMixinStmt.newTree(methodName),
+          lambdaBody
+        )
       )
     )
 
@@ -48,7 +60,7 @@ macro implementInterface(interfaceName: typed) : untyped =
   result = newStmtList()
   result.add getVtableProcDeclaration
 
-  let castIdent = newIdentNode("to" & $interfaceName.symbol)
+  let castIdent = exportIdent(newIdentNode("to" & $interfaceName.symbol), exports)
 
   result.add quote do:
     converter `castIdent`[T](this: ptr T) : `interfaceName` = `interfaceName`(
@@ -70,11 +82,14 @@ macro implementInterface(interfaceName: typed) : untyped =
 
 
 macro createInterface*(name : untyped, methods : untyped) : untyped =
-  name.expectKind nnkIdent
-
+  if name.kind != nnkPrefix: name.expectKind nnkIdent
 
   let
-    nameStr = $name.ident
+    exports = name.kind == nnkPrefix
+    cleanedName = if exports: name[1] else: name    
+    nameStr = $cleanedName.ident
+    markedName = if exports: newTree(nnkPostfix, newIdentNode("*"), cleanedName) else: name  
+
     vtableRecordList = nnkRecList.newTree
     vtableIdent = newIdentNode(nameStr & "Vtable")
     vtableTypeDef = nnkTypeSection.newTree(
@@ -94,14 +109,14 @@ macro createInterface*(name : untyped, methods : untyped) : untyped =
   for meth in methods:
     meth.expectKind(nnkProcDef)
     let
-      methodIdent = meth[0]
+      methodIdent = if meth[0].kind == nnkPostfix: meth[0][1] else: meth[0]
       params = meth[3]
       thisParam = params[1]
       thisIdent = thisParam[0]
       thisType  = thisParam[1]
 
-    if thisType != name:
-      error thisType.repr & " != " & name.repr
+    if thisType != cleanedName:
+      error thisType.repr & " != " & cleanedName.repr
 
     let vtableEntryParams = params.copy
     vtableEntryParams[1][1] = newIdentNode("pointer")
@@ -135,14 +150,14 @@ macro createInterface*(name : untyped, methods : untyped) : untyped =
   result = newStmtList()
   result.add(vtableTypeDef)
   result.add quote do:
-    type `name` = object
+    type `markedName` = object
       objet : pointer
       vtable: ptr `vtableIdent`
 
   for meth in newMethods:
     result.add meth
 
-  result.add newCall(bindSym"implementInterface", name)
+  result.add newCall(bindSym"implementInterface", cleanedName, newIdentNode(if exports: "true" else: "false"))
 
   when defined(interfacedebug):
     echo result.repr
