@@ -15,18 +15,13 @@ macro implementInterface(interfaceName: typed) : untyped =
       params = identDefs[1][0]
       lambdaBody = quote do:
         cast[var T](this).`methodName`()
-      call = lambdaBody[0]
 
     for i in 2 ..< len(params):
       let param = params[i]
       param.expectKind(nnkIdentDefs)
       for j in 0 .. len(param) - 3:
-        call.add param[j]
-
-    # leave out () when not needed
-    if call.len == 1:
-      lambdaBody[0] = call[0]
-
+        lambdaBody.add param[j]
+    
     methodName.expectKind nnkIdent
 
     objectConstructor.add nnkExprColonExpr.newTree(
