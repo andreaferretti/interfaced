@@ -1,4 +1,4 @@
 nimcache
 /test
-
+*.html
 *.exe

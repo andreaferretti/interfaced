@@ -1,3 +1,35 @@
+## Go-Like Interfaces for Nim
+##
+## Example:
+## ========
+## You can find more examples in the files ``test.nim``, ``test_logsink.nim`` and ``test_exports.nim``.
+##
+## .. code-block:: nim
+##   # interface definition:
+##   createInterface LogSink:
+##     proc log(this: LogSink, msg: string)
+##     proc messagesWritten(this: LogSink): int
+##   
+##   # interface implementation
+##   type MyLogSink = object
+##     messages: seq[string]
+##   
+##   proc log(this: var MyLogSink, msg: string) = this.messages.add(msg)
+##   proc messagesWritten(this: MyLogSink): int = this.messages.len
+##
+##   # ...
+##   
+##   # the order of definition and implementation doesn't matter, as long both are defined at the point where the conversion happens
+##   
+##   var myLogSink = MyLogSink()
+##   
+##   let
+##     logSinkA = myLogSink.toLogSink() # explicit conversion
+##     logSinkB: LogSink = myLogSink # implicit conversion
+##   
+##   logSinkA.log("Hello World")
+##   logSinkB.log("Bye World")
+##
 import macros
 
 proc exportIdent(ident: NimNode, exports: bool): NimNode {.compileTime.} =
@@ -12,7 +44,6 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
   let
     objectConstructor = nnkObjConstr.newTree(vtableSymbol)
   
-  echo "Vtable", vtableRecordList.repr
   for identDefs in vtableRecordList:
     let
       methodName = identDefs[0]
@@ -20,8 +51,6 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
       lambdaBody = nnkPar.newTree quote do:
         `methodName`(cast[var T](this))
       
-    echo lambdaBody.treeRepr
-
     for i in 2 ..< len(params):
       let param = params[i]
       param.expectKind(nnkIdentDefs)
@@ -80,8 +109,13 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
   when defined(interfacedebug):
     echo result.repr
 
-
 macro createInterface*(name : untyped, methods : untyped) : untyped =
+  ## Creates an interface named ``name``. By putting an asterix ``*`` before ``name``, the interface type will be exported. 
+  ## Methods need to be exported individually(see ``test_exports.nim``. 
+  ##
+  ## Even if a method isn't *callable* from the current scope, it's possible to implement it(see ``test_logsinks.nim``). In the 
+  ## same way an implementation may follow the interface definition it is implementing or an unexported procedure can implement an exported method, 
+  ## as long it's visible at the point of the conversion.
   if name.kind != nnkPrefix: name.expectKind nnkIdent
 
   let
