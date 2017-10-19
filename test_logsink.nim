@@ -5,8 +5,8 @@ import test_exports
 type MyLogSink = object
     messages: seq[string]
 
-proc log(this: var MyLogSink, msg: string) = this.messages.add(msg)
-proc messagesWritten(this: MyLogSink): int = this.messages.len
+proc log(self: var MyLogSink, msg: string) = self.messages.add(msg)
+proc messagesWritten(self: MyLogSink): int = self.messages.len
 
 when isMainModule:
     var myLogSink = MyLogSink(messages: @[])

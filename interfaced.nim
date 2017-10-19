@@ -48,8 +48,9 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
     let
       methodName = identDefs[0]
       params = identDefs[1][0]
+      thisParameter = params[1][0]
       lambdaBody = nnkPar.newTree quote do:
-        `methodName`(cast[var T](this))
+        `methodName`(cast[var T](`thisParameter`))
       
     for i in 2 ..< len(params):
       let param = params[i]

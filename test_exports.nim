@@ -26,8 +26,8 @@ proc name*(this: Charmander): string = "Charmander"
 proc typ*(this: Charmander): PokemonType = PokemonType.Fire
 
 createInterface *LogSink:
-  proc log*(this: LogSink, msg: string)
-  proc messagesWritten(this: LogSink): int
+  proc log*(self: LogSink, msg: string)
+  proc messagesWritten(self: LogSink): int
 
 proc echoSinkState*(sink: LogSink) =
   echo sink.messagesWritten()
