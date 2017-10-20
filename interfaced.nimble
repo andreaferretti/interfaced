@@ -4,7 +4,7 @@ version       = "0.1.0"
 author        = "Andrea Ferretti"
 description   = "Go-like interfaces"
 license       = "Apache2"
-skipFiles     = @["test.nim"]
+skipFiles     = @["test.nim", "test_exports.nim", "test_logsink.nim"]
 
 # Dependencies
 
