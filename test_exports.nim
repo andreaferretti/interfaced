@@ -4,8 +4,8 @@ type
   PokemonType* {.pure.} = enum
     Fire, Psychic # ...
 
-  Charmander* = object
-  Espeon* = object
+  Charmander* = ref object
+  Espeon* = ref object
 
 proc makeNoise*(this: Charmander): string = "Charmander, Charmander"
 proc legs*(this: Charmander): int = 2

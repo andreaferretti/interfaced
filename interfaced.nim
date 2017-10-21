@@ -49,19 +49,27 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
       methodName = identDefs[0]
       params = identDefs[1][0]
       thisParameter = params[1][0]
-      lambdaBody = nnkPar.newTree quote do:
-        `methodName`(cast[var T](`thisParameter`))
+
+      testThis = newIdentNode("x")
+      lambdaBody = quote do:
+        `methodName`(cast[T](`thisParameter`))
+
+      recursiveTest = quote do:
+        `methodName`(`testThis`)
       
     for i in 2 ..< len(params):
       let param = params[i]
       param.expectKind(nnkIdentDefs)
       for j in 0 .. len(param) - 3:
-        lambdaBody[0].add param[j]
-    
-    if lambdaBody[0].len == 1:
-      lambdaBody[0] = lambdaBody[0][0]
+        lambdaBody.add param[j]
+        recursiveTest.add param[j]
 
     methodName.expectKind nnkIdent
+
+    let recursiveCheck = quote do:
+      var `testThis` = T(nil)
+      when not(compiles(`recursiveTest`)):
+        {.fatal: "recursive call".}
 
     objectConstructor.add nnkExprColonExpr.newTree(
       methodName,
@@ -71,6 +79,7 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
         newEmptyNode(),newEmptyNode(),
         newStmtList(
           nnkMixinStmt.newTree(methodName),
+          recursiveCheck,
           lambdaBody
         )
       )
@@ -90,22 +99,15 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
   result = newStmtList()
   result.add getVtableProcDeclaration
 
-  let castIdent = exportIdent(newIdentNode("to" & $interfaceName.symbol), exports)
-
+  let 
+    castIdent = exportIdent(newIdentNode("to" & $interfaceName.symbol), exports)
+    errorMessage = newStrLitNode("Recursive call of type " & $interfaceName.symbol)
   result.add quote do:
-    converter `castIdent`[T](this: ptr T) : `interfaceName` = `interfaceName`(
-      objet : this,
-      vtable : `getVtableProcIdent`[T]()
-    )
-
-  result.add quote do:
-    converter `castIdent`[T](this: var T) : `interfaceName` = `interfaceName`(
-      objet : this.addr,
-      vtable : `getVtableProcIdent`[T]()
-    )
-
-  result.add quote do:
-    converter `castIdent`(this: `interfaceName`): `interfaceName` = this
+    converter `castIdent`(this: ref) : `interfaceName` = 
+      `interfaceName`(
+        objet : cast[RootRef](this),
+        vtable : `getVtableProcIdent`[type(this)]()
+      )
 
   when defined(interfacedebug):
     echo result.repr
@@ -154,7 +156,7 @@ macro createInterface*(name : untyped, methods : untyped) : untyped =
       error thisType.repr & " != " & cleanedName.repr
 
     let vtableEntryParams = params.copy
-    vtableEntryParams[1][1] = newIdentNode("pointer")
+    vtableEntryParams[1][1] = newIdentNode("RootRef")
 
     vtableRecordList.add(
       nnkIdentDefs.newTree(
@@ -186,7 +188,7 @@ macro createInterface*(name : untyped, methods : untyped) : untyped =
   result.add(vtableTypeDef)
   result.add quote do:
     type `markedName` = object
-      objet : pointer
+      objet : RootRef
       vtable: ptr `vtableIdent`
 
   for meth in newMethods:

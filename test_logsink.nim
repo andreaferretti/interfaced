@@ -2,7 +2,7 @@ import interfaced
 
 import test_exports
 
-type MyLogSink = object
+type MyLogSink = ref object
     messages: seq[string]
 
 proc log(self: var MyLogSink, msg: string) = self.messages.add(msg)
@@ -15,3 +15,7 @@ when isMainModule:
     myLogSink.log("ABC")
     
     echoSinkstate(myLogSink)
+    let i = myLogSink.toLogSink()
+    myLogSink = nil
+    GC_fullCollect()
+    i.echoSinkState()

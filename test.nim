@@ -3,23 +3,23 @@ import interfaced
 import test_exports
 
 type
-  Human = object
+  Human = ref object
     name: string
-  Dog = object
+  Dog = ref object
 
-proc makeNoise(human: var Human): string =
+proc makeNoise(human: Human): string =
   "Hello, my name is " & human.name
 
-proc legs(human: var Human): int = 2
+proc legs(human: Human): int = 2
 
-proc greet(human: var Human, other: string): string =
+proc greet(human: Human, other: string): string =
   "Nice to meet you, " & other
 
-proc makeNoise(dog: var Dog): string = "Woof! Woof!"
+proc makeNoise(dog: Dog): string = "Woof! Woof!"
 
-proc legs(dog: var Dog): int = 4
+proc legs(dog: Dog): int = 4
 
-proc greet(dog: var Dog, other: string): string = "Woof! Woooof... wof!?"
+proc greet(dog: Dog, other: string): string = "Woof! Woooof... wof!?"
 
 createInterface(Animal):
   proc makeNoise(this: Animal): string
