@@ -14,7 +14,7 @@ when isMainModule:
     myLogSink.log("Hello World")
     myLogSink.log("ABC")
     
-    echoSinkstate(myLogSink)
+    echoSinkstate(myLogSink.toLogSink)
     let i = myLogSink.toLogSink()
     myLogSink = nil
     GC_fullCollect()

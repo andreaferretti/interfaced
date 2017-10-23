@@ -101,9 +101,8 @@ macro implementInterface(interfaceName: typed, exports: static[bool]) : untyped 
 
   let 
     castIdent = exportIdent(newIdentNode("to" & $interfaceName.symbol), exports)
-    errorMessage = newStrLitNode("Recursive call of type " & $interfaceName.symbol)
   result.add quote do:
-    converter `castIdent`(this: ref) : `interfaceName` = 
+    proc `castIdent`(this: ref) : `interfaceName` = 
       `interfaceName`(
         objet : cast[RootRef](this),
         vtable : `getVtableProcIdent`[type(this)]()
